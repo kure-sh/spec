@@ -28,23 +28,23 @@ jobs:
             if (ref != null) {
               console.log(chalk.cyan(`Current version (${version}) already tagged.`));
               console.log(`${ref.object.type} ${ref.object.sha}`);
-              return { pending: false };
+              return { pending: false, version: "" };
             }
 
             console.log(chalk.green(`New version: ${version}`));
             console.log();
 
-            const { sha, commit, committer } = await getCommit(env.GITHUB_SHA);
+            const { sha, commit, author } = await getCommit(env.GITHUB_SHA);
             console.log(chalk.bold(`“${commit.message}”`), chalk.gray(`[${sha}]`));
             console.log(
-              `committed by ${chalk.bold(committer.login)}`,
-              `(${commit.committer.name})`,
-              chalk.gray(commit.committer.date)
+              `committed by ${chalk.bold(author.login)}`,
+              `(${commit.author.name})`,
+              chalk.gray(commit.author.date)
             );
 
             const members = await listMembers();
-            if (!members.has(committer.login)) {
-              throw new Error(`${committer.login} is not a member of ${owner}`);
+            if (!members.has(author.login)) {
+              throw new Error(`${author.login} is not a member of ${owner}`);
             }
 
             if (!commit.verification.verified) {
