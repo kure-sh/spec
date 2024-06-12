@@ -18,6 +18,9 @@ export interface API extends Descriptor<"API"> {
   name: string;
   version: string | null;
 
+  /** API's that this API group depends on. */
+  dependencies: APIDependency[];
+
   groups: APIGroupIdentifier[];
 }
 
