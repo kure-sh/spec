@@ -35,7 +35,8 @@ jobs:
             console.log();
 
             const { sha, commit, author } = await getCommit(env.GITHUB_SHA);
-            console.log(chalk.bold(`“${commit.message}”`), chalk.gray(`[${sha}]`));
+            const subject = commit.message.split("\n", 1)[0];
+            console.log(chalk.bold(`“${subject}”`), chalk.gray(`[${sha}]`));
             console.log(
               `committed by ${chalk.bold(author.login)}`,
               `(${commit.author.name})`,
