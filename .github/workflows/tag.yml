@@ -1,0 +1,96 @@
+name: Tag version
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tag:
+    name: Check and tag
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Check for tagged version
+        id: check
+        uses: silverlyra/script-action@v0.2
+        with:
+          script: |
+            const [owner, repo] = env.GITHUB_REPOSITORY.split("/", 2);
+            const { version } = JSON.parse(await fs.readFile("deno.json", "utf-8"));
+
+            const ref = await getRef();
+            if (ref != null) {
+              console.log(chalk.cyan(`Current version (${version}) already tagged.`));
+              console.log(`${ref.object.type} ${ref.object.sha}`);
+              return { pending: false };
+            }
+
+            console.log(chalk.green(`New version: ${version}`));
+            console.log();
+
+            const { sha, commit, committer } = await getCommit(env.GITHUB_SHA);
+            console.log(chalk.bold(`“${commit.message}”`), chalk.gray(`[${sha}]`));
+            console.log(
+              `committed by ${chalk.bold(committer.login)}`,
+              `(${commit.committer.name})`,
+              chalk.gray(commit.committer.date)
+            );
+
+            const members = await listMembers();
+            if (!members.has(committer.login)) {
+              throw new Error(`${committer.login} is not a member of ${owner}`);
+            }
+
+            if (!commit.verification.verified) {
+              const { reason } = commit.verification;
+              throw new Error(`Commit is not verified (${JSON.stringify(reason)})`);
+            }
+
+            return { pending: true, version };
+
+            async function getRef() {
+              try {
+                const { data } = await github.rest.git.getRef({ owner, repo, ref: `tags/v${version}` });
+                return data;
+              } catch (err) {
+                if (err.status === 404) return null;
+                throw err;
+              }
+            }
+
+            async function getCommit(sha) {
+              console.log(chalk.gray(`getCommit(${JSON.stringify(sha)})`));
+              const { data } = await github.rest.repos.getCommit({ owner, repo, ref: sha });
+              return data;
+            }
+
+            async function listMembers() {
+              const { data } = await github.rest.orgs.listMembers({ org: "kure-sh" });
+              return new Map(data.map(member => [member.login, member]));
+            }
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        if: fromJson(steps.check.outputs.result).pending
+        with:
+          gpg_private_key: ${{ secrets.RELEASE_SIGNING_KEY_PEM }}
+          trust_level: 5
+          git_user_signingkey: true
+          git_tag_gpgsign: true
+          git_committer_name: "Kure Releases"
+
+      - name: Tag commit and push
+        if: fromJson(steps.check.outputs.result).pending
+        env:
+          TAG_NAME: v${{ fromJson(steps.check.outputs.result).version }}
+        run: |
+          git tag -a -m "$TAG_NAME" "$TAG_NAME"
+          git tag -v "$TAG_NAME"
+
+          git push origin "$TAG_NAME"
