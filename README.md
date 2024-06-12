@@ -12,7 +12,7 @@ Below is an example of a simple API with one [custom resource][crd]:
 [ingest-go]: https://github.com/kure-sh/ingest-go
 
 ```ts
-import type { APIGroupVersion } from "https://kure.sh/lib/spec@0.1/mod.ts";
+import type { APIGroupVersion } from "jsr:@kure/spec";
 
 export const v1alpha1: APIGroupVersion = {
   apiVersion: "spec.kure.sh/v1alpha1",
