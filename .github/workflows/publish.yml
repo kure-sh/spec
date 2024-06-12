@@ -1,0 +1,40 @@
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    name: Publish to JSR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # The OIDC ID token is used for authentication with JSR.
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.RELEASE_SIGNING_KEY_PEM }}
+          trust_level: 5
+          git_user_signingkey: true
+          git_committer_name: "Kure Releases"
+
+      - name: Validate tag signature
+        run: >
+          git tag -v "$GITHUB_REF_NAME"
+
+      - name: Publish to JSR
+        run: >
+          deno publish
